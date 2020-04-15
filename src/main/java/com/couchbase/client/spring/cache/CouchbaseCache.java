@@ -21,6 +21,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cache.Cache;
+import org.springframework.cache.support.SimpleValueWrapper;
+
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.bucket.BucketManager;
 import com.couchbase.client.java.document.Document;
@@ -35,13 +40,9 @@ import com.couchbase.client.java.view.DesignDocument;
 import com.couchbase.client.java.view.Stale;
 import com.couchbase.client.java.view.View;
 import com.couchbase.client.java.view.ViewQuery;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 import rx.Observable;
 import rx.functions.Func1;
-
-import org.springframework.cache.Cache;
-import org.springframework.cache.support.SimpleValueWrapper;
 
 /**
  * The {@link CouchbaseCache} class implements the Spring {@link Cache} interface on top of Couchbase Server and the
@@ -130,6 +131,24 @@ public class CouchbaseCache implements Cache {
     if(!getAlwaysFlush())
       ensureViewExists();
   }
+  
+  /**
+   * Construct the cache and pass in the {@link Bucket} instance.
+   *
+   * @param name the name of the cache reference.
+   * @param client the Bucket instance.
+   * @param ttl TTL value for objects in this cache
+   * @param alwaysFlush value for not using views
+   */
+  public CouchbaseCache(final String name, final Bucket client, int ttl, boolean alwaysFlush) {
+    this.name = name;
+    this.client = client;
+    this.ttl = ttl;
+    this.alwaysFlush = alwaysFlush;
+
+    if(!getAlwaysFlush())
+      ensureViewExists();
+  }
 
   /**
    * Returns the name of the cache.
@@ -205,7 +224,8 @@ public class CouchbaseCache implements Cache {
    * @throws RuntimeException if the {@code valueLoader} throws an exception
    * @since 4.3
    */
-  @Override
+  @SuppressWarnings("unchecked")
+@Override
   public <T> T get(final Object key, final Callable<T> valueLoader) {
     final String documentId = getDocumentId(key.toString());
     SerializableDocument doc = client.get(documentId, SerializableDocument.class);
@@ -327,7 +347,8 @@ public class CouchbaseCache implements Cache {
       return CACHE_PREFIX + DELIMITER + name + DELIMITER + key;
   }
 
-  private void evictAllDocuments() {
+  @SuppressWarnings("rawtypes")
+private void evictAllDocuments() {
     ViewQuery query = ViewQuery.from(CACHE_DESIGN_DOCUMENT, CACHE_VIEW);
     query.stale(Stale.FALSE);
     if (name == null || name.trim().length() == 0) {

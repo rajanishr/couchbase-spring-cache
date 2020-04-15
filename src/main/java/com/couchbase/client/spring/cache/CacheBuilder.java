@@ -1,8 +1,8 @@
 package com.couchbase.client.spring.cache;
 
-import com.couchbase.client.java.Bucket;
-
 import java.util.concurrent.TimeUnit;
+
+import com.couchbase.client.java.Bucket;
 
 /**
  * A builder for {@link CouchbaseCache} instance.
@@ -14,12 +14,13 @@ public class CacheBuilder {
   private static final int DEFAULT_TTL = 0;
 
   private Bucket bucket;
+  private boolean alwaysFlush = false;
   private int cacheExpiry;
 
   protected CacheBuilder() {
     this.cacheExpiry = DEFAULT_TTL;
   }
-
+  
   /**
    * Create a new builder instance with the given {@link Bucket}.
    * @param bucket the bucket to use
@@ -70,12 +71,23 @@ public class CacheBuilder {
   }
 
   /**
+   * Give a always flush directive to the cache when clearing.
+   *
+   * @param alwaysFlush the flush directive.
+   * @return this builder for chaining purposes.
+   */
+  public CacheBuilder withAlwaysFlush(boolean alwaysFlush) {
+    this.alwaysFlush = alwaysFlush;
+    return this;
+  }
+  
+  /**
    * Build a new {@link CouchbaseCache} with the specified name.
    * @param cacheName the name of the cache
    * @return a {@link CouchbaseCache} instance
    */
   public CouchbaseCache build(String cacheName) {
-    return new CouchbaseCache(cacheName, this.bucket, this.cacheExpiry);
+    return new CouchbaseCache(cacheName, this.bucket, this.cacheExpiry, this.alwaysFlush);
   }
 
 }

@@ -15,12 +15,18 @@
  */
 package com.couchbase.client.spring.cache;
 
-import com.couchbase.client.java.Bucket;
-import com.couchbase.client.java.Cluster;
-import com.couchbase.client.java.CouchbaseCluster;
+import java.util.ArrayList;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import com.couchbase.client.java.Bucket;
+import com.couchbase.client.java.Cluster;
+import com.couchbase.client.java.CouchbaseCluster;
+import com.couchbase.client.java.env.DefaultCouchbaseEnvironment;
+import com.couchbase.mock.Bucket.BucketType;
+import com.couchbase.mock.BucketConfiguration;
+import com.couchbase.mock.CouchbaseMock;
 
 /**
  * Spring Configuration for basic integration tests.
@@ -30,25 +36,42 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class TestConfiguration {
 
-  public String seedNode() {
-    return System.getProperty("couchbase.seedNode", "127.0.0.1");
-  }
+    @Bean
+    public CouchbaseMock couchbaseMock() throws Exception {
+        BucketConfiguration bucketConfiguration = new BucketConfiguration();
+        bucketConfiguration.numNodes = 1;
+        bucketConfiguration.numReplicas = 1;
+        bucketConfiguration.numVBuckets = 1024;
+        bucketConfiguration.name = "default";
+        bucketConfiguration.type = BucketType.COUCHBASE;
+        bucketConfiguration.password = "";
+        ArrayList<BucketConfiguration> configList = new ArrayList<BucketConfiguration>();
+        configList.add(bucketConfiguration);
+        CouchbaseMock couchbaseMock = new CouchbaseMock(0, configList);
+        couchbaseMock.start();
+        couchbaseMock.waitForStartup();
+        return couchbaseMock;
+    }
+    
+    @Bean(name = "cluster")
+    public Cluster couchbaseCluster() throws Exception {
+        CouchbaseMock couchbaseMock = couchbaseMock();
+        int httpPort = couchbaseMock.getHttpPort();
+        int carrierPort = couchbaseMock.getCarrierPort("default");
 
-  public String bucketName() {
-    return System.getProperty("couchbase.bucketName", "default");
-  }
-  public String bucketPassword() {
-    return System.getProperty("couchbase.bucketPassword", "");
-  }
-
-  @Bean(destroyMethod = "disconnect")
-  public Cluster cluster() {
-    return CouchbaseCluster.create(seedNode());
-  }
-
-  @Bean(destroyMethod = "close")
-  public Bucket bucket() {
-    return cluster().openBucket(bucketName(), bucketPassword());
-  }
-
+        System.out.println("carrierPort="+carrierPort);
+        
+        Cluster cluster = CouchbaseCluster.create(DefaultCouchbaseEnvironment.builder()
+                .bootstrapCarrierDirectPort(carrierPort)
+                .bootstrapHttpDirectPort(httpPort)
+                .socketConnectTimeout(10000)
+                .connectTimeout(15000)
+                .build(), "couchbase://127.0.0.1");
+        return cluster;
+    }
+    
+    @Bean(name = "bucket", destroyMethod = "close")
+    public Bucket couchbaseBucket() throws Exception {
+        return couchbaseCluster().openBucket("default");
+    }
 }

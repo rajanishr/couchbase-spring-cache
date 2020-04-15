@@ -15,16 +15,17 @@
  */
 package com.couchbase.client.spring.cache.wiring.javaConfig;
 
-import com.couchbase.client.spring.cache.CouchbaseCacheManager;
-import com.couchbase.client.spring.cache.CacheBuilder;
-import com.couchbase.client.spring.cache.TestConfiguration;
-import com.couchbase.client.spring.cache.wiring.CachedService;
-
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+
+import com.couchbase.client.java.Bucket;
+import com.couchbase.client.spring.cache.CacheBuilder;
+import com.couchbase.client.spring.cache.CouchbaseCacheManager;
+import com.couchbase.client.spring.cache.TestConfiguration;
+import com.couchbase.client.spring.cache.wiring.CachedService;
 
 /**
  * A test {@link Configuration} that scans for services in the same package and enables caching on them.
@@ -40,12 +41,12 @@ public class CacheEnabledTestConfiguration extends TestConfiguration {
   public static final String DATA_CACHE_NAME = "dataCache";
 
   @Bean
-  public CacheBuilder defaultBuilder() {
-    return CacheBuilder.newInstance(bucket());
+  public CacheBuilder defaultBuilder(Bucket bucket) {
+    return CacheBuilder.newInstance(bucket);
   }
 
   @Bean
-  public CacheManager cacheManager() {
-    return new CouchbaseCacheManager(defaultBuilder(), DATA_CACHE_NAME);
+  public CacheManager cacheManager(Bucket bucket) {
+    return new CouchbaseCacheManager(defaultBuilder(bucket), DATA_CACHE_NAME);
   }
 }

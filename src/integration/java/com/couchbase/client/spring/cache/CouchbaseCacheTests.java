@@ -33,20 +33,18 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.couchbase.client.java.Bucket;
-import com.couchbase.client.java.Cluster;
-import com.couchbase.client.java.document.JsonDocument;
-import com.couchbase.client.java.document.json.JsonObject;
-import com.couchbase.client.java.error.DocumentDoesNotExistException;
-import org.junit.Assume;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.Cache.ValueWrapper;
 import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.TestContext;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+
+import com.couchbase.client.java.Bucket;
+import com.couchbase.client.java.document.JsonDocument;
+import com.couchbase.client.java.document.json.JsonObject;
+import com.couchbase.client.java.error.DocumentDoesNotExistException;
 
 /**
  * Tests the CouchbaseCache class and verifies its functionality.
@@ -79,6 +77,18 @@ public class CouchbaseCacheTests {
 
     assertEquals(cacheName, cache.getName());
     assertEquals(client, cache.getNativeCache());
+  }
+  
+  /**
+   * Tests the basic Cache Flush construction functionality.
+   */
+  @Test
+  public void testConstructionForFlush() {
+    CouchbaseCache cache = new CouchbaseCache(cacheName, client, 1, true);
+
+    assertEquals(cacheName, cache.getName());
+    assertEquals(client, cache.getNativeCache());
+    assertEquals(true, cache.getAlwaysFlush());
   }
 
   /**
@@ -118,6 +128,24 @@ public class CouchbaseCacheTests {
     String stored = cache.get(key, String.class);
     assertNull(stored);
   }
+  
+  /**
+   * Verifies set() with Flush value.
+   */
+  @Test
+  public void testSetWithFlush() throws InterruptedException {
+    CouchbaseCache cache = new CouchbaseCache(cacheName, client, 1, true); // cache for 1 second
+
+    String key = "couchbase-cache-test";
+    String value = "Hello World!";
+    cache.put(key, value);
+
+    // wait for TTL to expire (double time of TTL)
+    Thread.sleep(2000);
+
+    String stored = cache.get(key, String.class);
+    assertNull(stored);
+  }
 
   @Test
   public void testGetSetWithCast() {
@@ -142,6 +170,28 @@ public class CouchbaseCacheTests {
   @Test
   public void testEvict() throws Exception {
     CouchbaseCache cache = new CouchbaseCache(cacheName, client);
+
+    String key = "couchbase-cache-test";
+    String value = "Hello World!";
+
+    cache.put(key, value);
+    Thread.sleep(10);
+
+    cache.evict(key);
+
+    Thread.sleep(10);
+    Object result = cache.get(key);
+    assertNull(result);
+  }
+  
+  /**
+   * Verifies the deletion of cache objects.
+   *
+   * @throws Exception
+   */
+  @Test
+  public void testEvictWithFlush() throws Exception {
+    CouchbaseCache cache = new CouchbaseCache(cacheName, client, 0, true);
 
     String key = "couchbase-cache-test";
     String value = "Hello World!";
@@ -288,7 +338,8 @@ public class CouchbaseCacheTests {
     assertEquals("value0", w.get());
   }
 
-  static class User implements Serializable {
+  @SuppressWarnings("serial")
+static class User implements Serializable {
     public String firstname;
   }
 

@@ -14,11 +14,16 @@ new CouchbaseCacheManager(new CacheBuilder().withBucket(bucket), "cache1", "cach
 Map<String, CacheBuilder> caches = new HashMap<String, CacheBuilder>();
 caches.put("cacheA", new CacheBuilder().withBucket(bucket).withExpirationInMillis(2000));
 caches.put("cacheB", new CacheBuilder().withBucket(bucket2).withExpirationInMillis(3000));
+caches.put("cacheB", new CacheBuilder().withBucket(bucket2).withAlwaysFlush(true));
 new CouchbaseCacheManager(caches);
 
 //dynamic-capable cache manager
 //no cache is preloaded but it will create them on demand using the builder as a template
 new CouchbaseCacheManager(new CacheBuilder().withBucket(bucket).withExpirationInMillis(1000));
+
+//flush-capable or to avoid couchbase views cache manager
+//no cache is preloaded but it will create them on demand using the builder as a template
+new CouchbaseCacheManager(new CacheBuilder().withBucket(bucket).withAlwaysFlush(true));
 ```
 
 Notice how the `CacheBuilder` allows you to describe how the `Cache` is backed by Couchbase by providing a `Bucket` from the Couchbase Java SDK, among other tunings.
